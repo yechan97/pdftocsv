@@ -1,59 +1,52 @@
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, render_template, request, send_file
 import pdfplumber
-import re
 import pandas as pd
 import io
+import os
+import re
 
 app = Flask(__name__)
 
-# 업로드 용량 최대 50MB 설정
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
-
 @app.route('/')
-def index():
+def home():
     return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
-        return jsonify({"error": "파일이 선택되지 않았습니다."}), 400
+    uploaded_file = request.files.get('file')
+    if uploaded_file is None or uploaded_file.filename == '':
+        return '파일을 선택해주세요.', 400
 
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "파일명이 없습니다."}), 400
+    with pdfplumber.open(uploaded_file) as pdf:
+        text = ''
+        for page in pdf.pages:
+            text += page.extract_text() + "\n"
 
-    filename = file.filename.lower()
+    # 간단한 예제 기준 regex
+    pattern = re.compile(r"(\S+)\s(\d+):(\d+)\s(.+?)(?=\S+\s\d+:\d+|\Z)", re.DOTALL)
+    matches = pattern.findall(text)
 
-    try:
-        if filename.endswith('.pdf'):
-            with pdfplumber.open(file) as pdf:
-                text = ''.join(page.extract_text() for page in pdf.pages)
+    rows = []
+    for match in matches:
+        rows.append({
+            '책': match[0],
+            '장': match[1],
+            '절': match[2],
+            '내용': match[3].strip()
+        })
 
-        elif filename.endswith('.twm'):
-            text = file.read().decode('utf-8')
+    df = pd.DataFrame(rows)
 
-        else:
-            return jsonify({"error": "PDF 또는 TWM 파일만 지원합니다."}), 400
+    csv_io = io.StringIO()
+    df.to_csv(csv_io, index=False, encoding='utf-8-sig')
+    csv_io.seek(0)
 
-        pattern = re.compile(r"(\S+)\s(\d+):(\d+)\s(.+?)(?=\S+\s\d+:\d+|\Z)", re.DOTALL)
-        matches = pattern.findall(text)
-
-        data = [{"책": book, "장": chap, "절": verse, "주석": comm.strip()} for book, chap, verse, comm in matches]
-
-        df = pd.DataFrame(data)
-        csv_buffer = io.StringIO()
-        df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
-        csv_buffer.seek(0)
-
-        return send_file(
-            io.BytesIO(csv_buffer.getvalue().encode('utf-8-sig')),
-            mimetype='text/csv',
-            as_attachment=True,
-            download_name='성경DB.csv'
-        )
-
-    except Exception as e:
-        return jsonify({"error": f"처리 중 오류가 발생했습니다: {str(e)}"}), 500
+    return send_file(
+        io.BytesIO(csv_io.getvalue().encode('utf-8-sig')),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name='성경DB.csv'
+    )
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
