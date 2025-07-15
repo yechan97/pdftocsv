@@ -6,16 +6,25 @@ import io
 
 app = Flask(__name__)
 
+# 업로드 용량 최대 50MB 설정
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    file = request.files['file']
-    if file:
-        filename = file.filename.lower()
+    if 'file' not in request.files:
+        return jsonify({"error": "파일이 선택되지 않았습니다."}), 400
 
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "파일명이 없습니다."}), 400
+
+    filename = file.filename.lower()
+
+    try:
         if filename.endswith('.pdf'):
             with pdfplumber.open(file) as pdf:
                 text = ''.join(page.extract_text() for page in pdf.pages)
@@ -43,7 +52,8 @@ def upload_file():
             download_name='성경DB.csv'
         )
 
-    return jsonify({"error": "파일을 업로드 해주세요."}), 400
+    except Exception as e:
+        return jsonify({"error": f"처리 중 오류가 발생했습니다: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
