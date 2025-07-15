@@ -1,1 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF to CSV 변환기</title>
+    <link href="https://cdn.tailwindcss.com" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex justify-center items-center h-screen">
+    <div class="bg-white p-10 rounded-lg shadow-md">
+        <h1 class="text-2xl mb-4 font-bold">📖 PDF → CSV 변환기</h1>
 
+        <div id="passwordDiv">
+            <input type="password" id="password" placeholder="비밀번호 입력" class="border p-2 rounded mb-4 w-full">
+            <button onclick="checkPassword()" class="bg-blue-500 text-white p-2 rounded w-full">확인</button>
+        </div>
+
+        <div id="mainContent" style="display:none;">
+            <input type="file" id="pdfFile" accept=".pdf" class="border p-2 rounded mb-4 w-full">
+            <button onclick="uploadPDF()" class="bg-green-500 text-white p-2 rounded w-full">CSV로 변환 및 다운로드</button>
+        </div>
+    </div>
+
+<script>
+function checkPassword(){
+    const pwd = document.getElementById("password").value;
+    if(pwd === "1234"){
+        document.getElementById("passwordDiv").style.display = "none";
+        document.getElementById("mainContent").style.display = "block";
+    } else {
+        alert("비밀번호가 틀렸습니다.");
+    }
+}
+
+function uploadPDF(){
+    const fileInput = document.getElementById("pdfFile");
+    if(fileInput.files.length == 0){
+        alert("PDF 파일을 선택하세요!");
+        return;
+    }
+
+    let formData = new FormData();
+    formData.append("pdf", fileInput.files[0]);
+
+    fetch('/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if(!response.ok) throw new Error("업로드 실패");
+        return response.blob();
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '성경DB.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    })
+    .catch(e => alert(e));
+}
+</script>
+
+</body>
+</html>
