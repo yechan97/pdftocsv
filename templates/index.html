@@ -13,6 +13,17 @@
             <input type="file" name="file" id="fileInput" accept=".pdf" class="block mx-auto mb-4">
             <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded w-full">CSV로 변환 및 다운로드</button>
         </form>
+
+        <!-- 로딩 스피너 -->
+        <div id="loadingSpinner" class="mt-4 hidden">
+            <div class="flex justify-center items-center">
+                <svg class="animate-spin h-8 w-8 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-gray-600">파일 처리 중...</span>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -21,28 +32,39 @@
 
             const formData = new FormData();
             const fileInput = document.getElementById('fileInput');
+            const spinner = document.getElementById('loadingSpinner');
+
             if (!fileInput.files[0]) {
                 alert('파일을 선택해주세요.');
                 return;
             }
+
             formData.append('file', fileInput.files[0]);
 
-            const response = await fetch('/upload', {
-                method: 'POST',
-                body: formData
-            });
+            spinner.classList.remove('hidden');
 
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = '성경DB.csv';
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-            } else {
-                alert('파일 업로드 실패!');
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = '성경DB.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                } else {
+                    alert('파일 업로드 실패!');
+                }
+            } catch {
+                alert('네트워크 오류 또는 서버 오류!');
+            } finally {
+                spinner.classList.add('hidden');
             }
         });
     </script>
