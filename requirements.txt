@@ -1,3 +1,4 @@
 flask
 pdfplumber
 pandas
+gunicorn
