@@ -2,65 +2,102 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>PDF to CSV 변환기</title>
-    <link href="https://cdn.tailwindcss.com" rel="stylesheet">
+    <title>📖 성경 DB 변환기</title>
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Gowun Dodum', sans-serif;
+        }
+        .drag-area {
+            border: 3px dashed #9ca3af;
+            border-radius: 10px;
+            padding: 40px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .drag-area.dragover {
+            background-color: #f3f4f6;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 flex justify-center items-center h-screen">
-    <div class="bg-white p-10 rounded-lg shadow-md">
-        <h1 class="text-2xl mb-4 font-bold">📖 PDF → CSV 변환기</h1>
+<body class="bg-gray-50 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md text-center">
+        <h1 class="text-3xl font-bold mb-6">📚 성경 DB 변환기</h1>
 
         <div id="passwordDiv">
-            <input type="password" id="password" placeholder="비밀번호 입력" class="border p-2 rounded mb-4 w-full">
+            <input type="password" id="password" placeholder="비밀번호를 입력하세요" class="border p-2 rounded mb-4 w-full text-center">
             <button onclick="checkPassword()" class="bg-blue-500 text-white p-2 rounded w-full">확인</button>
         </div>
 
         <div id="mainContent" style="display:none;">
-            <input type="file" id="pdfFile" accept=".pdf" class="border p-2 rounded mb-4 w-full">
-            <button onclick="uploadPDF()" class="bg-green-500 text-white p-2 rounded w-full">CSV로 변환 및 다운로드</button>
+            <div id="drag-area" class="drag-area mb-4">
+                <p class="text-gray-600">PDF 또는 TWM 파일을 여기에 드래그 & 드롭<br>혹은 클릭하여 파일 선택</p>
+                <input type="file" id="fileInput" accept=".pdf,.twm" hidden>
+            </div>
+            <button onclick="uploadFile()" class="bg-green-500 text-white p-2 rounded w-full">CSV로 변환 및 다운로드</button>
         </div>
     </div>
 
-<script>
-function checkPassword(){
-    const pwd = document.getElementById("password").value;
-    if(pwd === "1234"){
-        document.getElementById("passwordDiv").style.display = "none";
-        document.getElementById("mainContent").style.display = "block";
-    } else {
-        alert("비밀번호가 틀렸습니다.");
-    }
-}
+    <script>
+        const dragArea = document.getElementById("drag-area");
+        const fileInput = document.getElementById("fileInput");
 
-function uploadPDF(){
-    const fileInput = document.getElementById("pdfFile");
-    if(fileInput.files.length == 0){
-        alert("PDF 파일을 선택하세요!");
-        return;
-    }
+        dragArea.addEventListener("click", () => fileInput.click());
 
-    let formData = new FormData();
-    formData.append("pdf", fileInput.files[0]);
+        dragArea.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dragArea.classList.add("dragover");
+        });
 
-    fetch('/upload', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if(!response.ok) throw new Error("업로드 실패");
-        return response.blob();
-    })
-    .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = '성경DB.csv';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-    })
-    .catch(e => alert(e));
-}
-</script>
+        dragArea.addEventListener("dragleave", () => {
+            dragArea.classList.remove("dragover");
+        });
 
+        dragArea.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dragArea.classList.remove("dragover");
+            fileInput.files = e.dataTransfer.files;
+        });
+
+        function checkPassword(){
+            const pwd = document.getElementById("password").value;
+            if(pwd === "1234"){
+                document.getElementById("passwordDiv").style.display = "none";
+                document.getElementById("mainContent").style.display = "block";
+            } else {
+                alert("비밀번호가 틀렸습니다.");
+            }
+        }
+
+        function uploadFile(){
+            if(fileInput.files.length == 0){
+                alert("파일을 선택해주세요!");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if(!response.ok) throw new Error("변환 실패. 올바른 파일인지 확인하세요.");
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '성경DB.csv';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            })
+            .catch(e => alert(e));
+        }
+    </script>
 </body>
 </html>
